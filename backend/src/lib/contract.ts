@@ -90,22 +90,29 @@ export async function initializeVoting(
   description: string,
   snapshots: { wallet_address: string; stake_amount: string }[]
 ): Promise<void> {
-  const contract = getContract(contractAddress);
+  const wallet = getAdminWallet();
+  const contract = new Contract(contractAddress, loadAbi(), wallet);
 
-  await contract.setProposal(description);
+  let currentNonce = await wallet.getNonce();
+
+  const tx1: any = await contract.setProposal(description, { nonce: currentNonce++ });
+  if (tx1 && tx1.wait) await tx1.wait();
 
   for (const s of snapshots) {
     const amount = BigInt(s.stake_amount);
     if (amount <= 0n) continue;
-    await contract.assignStake(s.wallet_address, amount);
+    const tx: any = await contract.assignStake(s.wallet_address, amount, { nonce: currentNonce++ });
+    if (tx && tx.wait) await tx.wait();
   }
 
-  await contract.startVoting();
+  const tx2: any = await contract.startVoting({ nonce: currentNonce++ });
+  if (tx2 && tx2.wait) await tx2.wait();
 }
 
 export async function endVoting(contractAddress: string): Promise<void> {
   const contract = getContract(contractAddress);
-  await contract.endVoting();
+  const tx: any = await contract.endVoting();
+  if (tx && tx.wait) await tx.wait();
 }
 
 export async function getResult(contractAddress: string): Promise<string> {

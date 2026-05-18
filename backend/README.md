@@ -10,11 +10,12 @@ Backend for **StakeVotingGovernance**: database, snapshot job, and contract inte
 
 ## Setup
 
-1. **PostgreSQL:** create DB and run schema.
+1. **PostgreSQL:** create DB and run schema/seeds.
    ```bash
    createdb vote_governance
    cd backend && pnpm install && pnpm build
    pnpm run db:migrate
+   pnpm run db:seed:dev # To insert mock users/wallets for dev testing
    ```
    (Schema file: `schema/001_initial.sql`.)
 

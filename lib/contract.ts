@@ -1,12 +1,5 @@
 import { BrowserProvider, Contract, ContractTransactionResponse } from 'ethers'
 
-// TODO: Replace with your actual contract address after deployment
-export const CONTRACT_ADDRESS = '0x...'
-
-export function isContractConfigured(): boolean {
-  return Boolean(CONTRACT_ADDRESS && CONTRACT_ADDRESS !== '0x...')
-}
-
 export const CONTRACT_ABI = [
   'function proposalDescription() view returns (string)',
   'function getVoteCounts() view returns (uint256, uint256)',
@@ -24,13 +17,14 @@ export interface VotingData {
   userStake: bigint
   hasVoted: boolean
   totalVotingPower: bigint
+  phase: number
 }
 
-export async function getVotingContract(signer: any) {
-  if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x...') {
-    throw new Error('Contract address not configured. Update CONTRACT_ADDRESS in lib/contract.ts')
+export async function getVotingContract(signer: any, contractAddress: string) {
+  if (!contractAddress || contractAddress === '0x...') {
+    throw new Error('Contract address not configured')
   }
-  return new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
+  return new Contract(contractAddress, CONTRACT_ABI, signer)
 }
 
 const EMPTY_VOTING_DATA: VotingData = {
@@ -40,24 +34,27 @@ const EMPTY_VOTING_DATA: VotingData = {
   userStake: 0n,
   hasVoted: false,
   totalVotingPower: 0n,
+  phase: 0,
 }
 
 export async function fetchVotingData(
   signer: any,
   userAddress: string,
+  contractAddress: string
 ): Promise<VotingData> {
-  if (!isContractConfigured()) {
+  if (!contractAddress || contractAddress === '0x...') {
     return EMPTY_VOTING_DATA
   }
-  const contract = await getVotingContract(signer)
+  const contract = await getVotingContract(signer, contractAddress)
 
-  const [proposal, [yesVotes, noVotes], userStake, hasVoted, totalVotingPower] =
+  const [proposal, [yesVotes, noVotes], userStake, hasVoted, totalVotingPower, phase] =
     await Promise.all([
       contract.proposalDescription(),
       contract.getVoteCounts(),
       contract.getUserVotingPower(userAddress),
       contract.hasVoted(userAddress),
       contract.totalVotingPower(),
+      contract.getPhase(),
     ])
 
   return {
@@ -67,14 +64,16 @@ export async function fetchVotingData(
     userStake,
     hasVoted,
     totalVotingPower,
+    phase: Number(phase),
   }
 }
 
 export async function submitVote(
   signer: any,
   support: boolean,
+  contractAddress: string
 ): Promise<string> {
-  const contract = await getVotingContract(signer)
+  const contract = await getVotingContract(signer, contractAddress)
 
   const tx: ContractTransactionResponse | null = await contract.vote(support)
   if (!tx) throw new Error('Failed to send transaction')

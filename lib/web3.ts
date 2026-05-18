@@ -44,6 +44,48 @@ export async function getConnectedAddress(): Promise<string | null> {
   }
 }
 
+export async function getChainId(): Promise<number | null> {
+  if (!window.ethereum) return null
+  try {
+    const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' })
+    return parseInt(chainIdHex, 16)
+  } catch {
+    return null
+  }
+}
+
+export async function switchNetwork(chainId: number): Promise<void> {
+  if (!window.ethereum) return
+  const chainIdHex = `0x${chainId.toString(16)}`
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: chainIdHex }],
+    })
+  } catch (err: any) {
+    if (err.code === 4902 && chainId === 80002) {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [
+          {
+            chainId: chainIdHex,
+            chainName: 'Polygon Amoy Testnet',
+            rpcUrls: ['https://rpc-amoy.polygon.technology/'],
+            nativeCurrency: {
+              name: 'POL',
+              symbol: 'POL',
+              decimals: 18,
+            },
+            blockExplorerUrls: ['https://amoy.polygonscan.com/'],
+          },
+        ],
+      })
+    } else {
+      throw err
+    }
+  }
+}
+
 export async function revokeWalletPermissions(): Promise<void> {
   try {
     if (!window.ethereum?.request) return

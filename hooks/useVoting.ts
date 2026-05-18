@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchVotingData, submitVote, isContractConfigured } from '@/lib/contract'
+import { fetchVotingData, submitVote } from '@/lib/contract'
 
 interface UseVotingState {
   proposal: string
@@ -10,6 +10,7 @@ interface UseVotingState {
   userStake: number
   hasVoted: boolean
   totalVotingPower: number
+  phase: number
   isLoading: boolean
   isSubmitting: boolean
   error: string | null
@@ -17,7 +18,7 @@ interface UseVotingState {
   contractNotConfigured: boolean
 }
 
-export function useVoting(signer: any, address: string | null) {
+export function useVoting(signer: any, address: string | null, contractAddress: string | null) {
   const [state, setState] = useState<UseVotingState>({
     proposal: '',
     yesVotes: 0,
@@ -25,6 +26,7 @@ export function useVoting(signer: any, address: string | null) {
     userStake: 0,
     hasVoted: false,
     totalVotingPower: 0,
+    phase: 0,
     isLoading: false,
     isSubmitting: false,
     error: null,
@@ -41,6 +43,7 @@ export function useVoting(signer: any, address: string | null) {
         userStake: 0,
         hasVoted: false,
         totalVotingPower: 0,
+        phase: 0,
         isLoading: false,
         isSubmitting: false,
         error: null,
@@ -50,12 +53,13 @@ export function useVoting(signer: any, address: string | null) {
       return
     }
 
-    if (!isContractConfigured()) {
+    if (!contractAddress || contractAddress === '0x...') {
       setState((prev) => ({
         ...prev,
         yesVotes: 0,
         noVotes: 0,
         totalVotingPower: 1000,
+        phase: 0,
         isLoading: false,
         error: null,
         contractNotConfigured: true,
@@ -66,7 +70,7 @@ export function useVoting(signer: any, address: string | null) {
     const fetchData = async () => {
       setState((prev) => ({ ...prev, isLoading: true, error: null, contractNotConfigured: false }))
       try {
-        const data = await fetchVotingData(signer, address)
+        const data = await fetchVotingData(signer, address, contractAddress)
         setState((prev) => ({
           ...prev,
           proposal: data.proposal,
@@ -75,6 +79,7 @@ export function useVoting(signer: any, address: string | null) {
           userStake: Number(data.userStake),
           hasVoted: data.hasVoted,
           totalVotingPower: Number(data.totalVotingPower),
+          phase: data.phase,
           isLoading: false,
           contractNotConfigured: false,
         }))
@@ -90,7 +95,7 @@ export function useVoting(signer: any, address: string | null) {
     }
 
     fetchData()
-  }, [signer, address])
+  }, [signer, address, contractAddress])
 
   const vote = async (support: boolean) => {
     if (!signer || !address) {
@@ -108,7 +113,7 @@ export function useVoting(signer: any, address: string | null) {
       return
     }
 
-    const isDemo = state.contractNotConfigured || !isContractConfigured()
+    const isDemo = state.contractNotConfigured || !contractAddress || contractAddress === '0x...'
 
     if (isDemo) {
       setState((prev) => ({
@@ -140,7 +145,7 @@ export function useVoting(signer: any, address: string | null) {
     }))
 
     try {
-      const hash = await submitVote(signer, support)
+      const hash = await submitVote(signer, support, contractAddress)
       setState((prev) => ({
         ...prev,
         hasVoted: true,
@@ -166,14 +171,14 @@ export function useVoting(signer: any, address: string | null) {
 
   const refetch = async () => {
     if (!signer || !address) return
-    if (!isContractConfigured()) {
+    if (!contractAddress || contractAddress === '0x...') {
       setState((prev) => ({ ...prev, contractNotConfigured: true, isLoading: false }))
       return
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null, contractNotConfigured: false }))
     try {
-      const data = await fetchVotingData(signer, address)
+      const data = await fetchVotingData(signer, address, contractAddress)
       setState((prev) => ({
         ...prev,
         proposal: data.proposal,

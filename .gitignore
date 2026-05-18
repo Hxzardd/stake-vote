@@ -32,9 +32,13 @@ next-env.d.ts
 /cache/
 /lib/
 /broadcast/
+/.foundry/
+*.zip
 
 # IDE / editor
 .idea/
+.claude/
+.gemini/
 *.swp
 *.swo
 *~
@@ -59,3 +63,15 @@ backend/node_modules
 *.sql.backup
 *.dump
 **/secrets/
+
+# Legacy / Personal CLI Scripts
+*.cjs
+backend/*.js
+backend/*.cjs
+
+# Development docs
+ARCHITECTURE.md
+IMPLEMENTATION_PLAN.md
+implementation_plan.md
+task.md
+walkthrough.md

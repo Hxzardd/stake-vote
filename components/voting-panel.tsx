@@ -11,6 +11,7 @@ interface VotingPanelProps {
   onVote: (direction: 'yes' | 'no') => void
   isLoading?: boolean
   error?: string | null
+  phase?: number
 }
 
 export default function VotingPanel({
@@ -21,6 +22,7 @@ export default function VotingPanel({
   onVote,
   isLoading = false,
   error = null,
+  phase = 1,
 }: VotingPanelProps) {
   return (
     <Card>
@@ -45,7 +47,12 @@ export default function VotingPanel({
               </div>
             )}
 
-            {!hasVoted ? (
+            {phase !== 1 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                <p className="text-sm font-medium text-amber-900">Voting is Closed</p>
+                <p className="text-xs text-amber-800 mt-1">This proposal is not currently in the voting phase.</p>
+              </div>
+            ) : !hasVoted ? (
               <div className="space-y-3">
                 <Button
                   onClick={() => onVote('yes')}
@@ -70,8 +77,9 @@ export default function VotingPanel({
                     ✓ Vote Recorded
                   </p>
                   <p className="text-sm text-green-800 mt-1">
-                    You voted {userVote === 'yes' ? 'Yes' : 'No'} with{' '}
-                    {userStake} voting power
+                    {userVote 
+                      ? `You voted ${userVote === 'yes' ? 'Yes' : 'No'} with ${userStake} voting power`
+                      : `You have successfully voted with ${userStake} voting power`}
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground text-center">

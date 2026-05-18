@@ -9,9 +9,35 @@ import VerificationSection from '@/components/verification-section'
 import { useWeb3 } from '@/hooks/useWeb3'
 import { useVoting } from '@/hooks/useVoting'
 
+interface ActiveProposal {
+  id: string
+  title: string
+  description: string
+  contract_address: string
+  status: string
+  quorum_bps?: number
+  created_at?: string
+}
+
 export default function Home() {
   const web3 = useWeb3()
-  const voting = useVoting(web3.signer, web3.address)
+  
+  const [activeProposal, setActiveProposal] = useState<ActiveProposal | null>(null)
+  const [loadingProposal, setLoadingProposal] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/active-proposal')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setActiveProposal(data)
+      })
+      .catch(console.error)
+      .finally(() => setLoadingProposal(false))
+  }, [])
+
+  const contractAddress = activeProposal?.contract_address || null
+  const voting = useVoting(web3.signer, web3.address, contractAddress)
+  
   const [userVote, setUserVote] = useState<'yes' | 'no' | null>(null)
 
   // Format wallet address for display
@@ -60,33 +86,36 @@ export default function Home() {
       />
 
       <div className="max-w-4xl mx-auto px-6 py-16">
-        {voting.contractNotConfigured && (
-          <>
-            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-              <p className="font-medium">Governance contract not configured</p>
-              <p className="mt-1 text-sm">
-                The app has no on-chain voting contract yet. Deploy <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50">StakeVotingGovernance</code> and set{' '}
-                <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50">CONTRACT_ADDRESS</code> in{' '}
-                <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50">lib/contract.ts</code> to enable real voting.
-              </p>
-            </div>
-            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
-              <p className="font-medium">Demo mode</p>
-              <p className="mt-1 text-sm">
-                You can still click Yes or No to see how the UI behaves. Results below update with simulated vote weights. Once the smart contract is connected, results will update like this after every real transaction.
-              </p>
-            </div>
-            {voting.hasVoted && (
-              <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                <p className="font-medium">After you vote</p>
-                <p className="mt-1 text-sm">
-                  This is how results will be presented after every transaction once the smart contract is deployed. The live tally and participation percentage will update on-chain the same way.
-                </p>
-              </div>
-            )}
-          </>
+        {web3.wrongNetwork && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
+            <p className="font-medium">Wrong Network</p>
+            <p className="mt-1 text-sm">
+              Please switch to the configured network (Polygon Amoy Testnet) to use this application.
+            </p>
+            <button
+              onClick={web3.switchChain}
+              className="mt-3 rounded bg-red-100 px-3 py-1.5 text-sm font-medium hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/70"
+            >
+              Switch Network
+            </button>
+          </div>
         )}
-        <ProposalSection proposal={voting.proposal} />
+        {!loadingProposal && !activeProposal && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <p className="font-medium">No active proposal found</p>
+            <p className="mt-1 text-sm">
+              There are no deployed proposals in the database. Please visit the admin panel to deploy one.
+            </p>
+          </div>
+        )}
+        
+        <ProposalSection 
+          title={activeProposal?.title}
+          description={activeProposal?.description || voting.proposal}
+          quorumBps={activeProposal?.quorum_bps}
+          status={activeProposal?.status}
+          createdAt={activeProposal?.created_at}
+        />
 
         <div className="grid md:grid-cols-2 gap-8 mt-12">
           <VotingPanel
@@ -97,6 +126,7 @@ export default function Home() {
             onVote={handleVote}
             isLoading={voting.isSubmitting}
             error={voting.error || web3.error}
+            phase={voting.phase}
           />
 
           <ResultsSection

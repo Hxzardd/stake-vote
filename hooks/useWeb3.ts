@@ -7,6 +7,8 @@ import {
   getProvider,
   getSigner,
   getConnectedAddress,
+  getChainId,
+  switchNetwork,
   revokeWalletPermissions,
   setupMetaMaskListener,
 } from '@/lib/web3'
@@ -16,6 +18,7 @@ interface UseWeb3State {
   signer: any | null
   provider: BrowserProvider | null
   isConnecting: boolean
+  wrongNetwork: boolean
   error: string | null
 }
 
@@ -25,6 +28,7 @@ export function useWeb3() {
     signer: null,
     provider: null,
     isConnecting: false,
+    wrongNetwork: false,
     error: null,
   })
 
@@ -35,11 +39,20 @@ export function useWeb3() {
         if (address) {
           const provider = await getProvider()
           const signer = await getSigner(provider)
+          const chainId = await getChainId()
+          
+          const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID 
+            ? parseInt(process.env.NEXT_PUBLIC_CHAIN_ID) 
+            : null
+
+          const isWrong = expectedChainId ? chainId !== expectedChainId : false
+
           setState({
             address,
             signer,
             provider,
             isConnecting: false,
+            wrongNetwork: isWrong,
             error: null,
           })
         }
@@ -58,6 +71,7 @@ export function useWeb3() {
             signer: null,
             provider: null,
             isConnecting: false,
+            wrongNetwork: false,
             error: null,
           })
         } else {
@@ -78,12 +92,20 @@ export function useWeb3() {
       const address = await connectMetaMask()
       const provider = await getProvider()
       const signer = await getSigner(provider)
+      const chainId = await getChainId()
+      
+      const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID 
+        ? parseInt(process.env.NEXT_PUBLIC_CHAIN_ID) 
+        : null
+
+      const isWrong = expectedChainId ? chainId !== expectedChainId : false
 
       setState({
         address,
         signer,
         provider,
         isConnecting: false,
+        wrongNetwork: isWrong,
         error: null,
       })
     } catch (err) {
@@ -93,6 +115,7 @@ export function useWeb3() {
         signer: null,
         provider: null,
         isConnecting: false,
+        wrongNetwork: false,
         error: errorMessage,
       })
     }
@@ -104,15 +127,29 @@ export function useWeb3() {
       signer: null,
       provider: null,
       isConnecting: false,
+      wrongNetwork: false,
       error: null,
     })
     await revokeWalletPermissions()
+  }
+
+  const switchChain = async () => {
+    if (!process.env.NEXT_PUBLIC_CHAIN_ID) return
+    setState((prev) => ({ ...prev, isConnecting: true, error: null }))
+    try {
+      await switchNetwork(parseInt(process.env.NEXT_PUBLIC_CHAIN_ID))
+      // Listener will catch the chainChanged event
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to switch network'
+      setState((prev) => ({ ...prev, isConnecting: false, error: errorMessage }))
+    }
   }
 
   return {
     ...state,
     connect,
     disconnect,
+    switchChain,
     isConnected: state.address !== null,
   }
 }

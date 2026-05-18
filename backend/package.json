@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "db:migrate": "node -r dotenv/config build/schema/run-migrate.js",
+    "db:seed:dev": "node -r dotenv/config build/jobs/seed-dev.js",
     "snapshot": "node -r dotenv/config build/jobs/snapshot-job-cli.js",
     "proposal:deploy": "node -r dotenv/config build/services/proposal-lifecycle-cli.js deploy",
     "proposal:start-voting": "node -r dotenv/config build/services/proposal-lifecycle-cli.js start-voting",
