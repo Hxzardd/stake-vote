@@ -1,87 +1,83 @@
-# StakeVote: Blockchain Governance Application
+# StakeVote
 
-StakeVote is designed to mirror real-world corporate governance rather than pure token-based on-chain models. Voting power is tied to verified stakeholder ownership, with stake validated off-chain and voting enforcement handled on-chain through immutable smart contracts. By decentralizing vote execution and tallying—while keeping real-world verification where it belongs—the system ensures transparent, weighted, and tamper-proof decision-making without unnecessary complexity.
+On-chain corporate governance for stake-weighted voting. Proposals live in a Supabase database; votes are cast and permanently recorded on Polygon Amoy via a Solidity smart contract. The admin panel manages the full proposal lifecycle — from creation through snapshot, deployment, and result finalization.
 
-I originally developed StakeVote during a hackathon to better understand the mechanics of on-chain governance. While Decentralized Autonomous Organizations (DAOs) are common, building a hybrid system from the ground up provided valuable insight into the underlying logic required to execute these processes securely.
+## Stack
 
-This document outlines the logic, architectural decisions, and technical implementation details of the finalized application.
+- **Frontend** — Next.js 15 App Router, TypeScript, Tailwind CSS 4
+- **Design** — Archival Civic aesthetic: EB Garamond, Inter, JetBrains Mono
+- **Chain** — Polygon Amoy (testnet), ethers.js v6, MetaMask
+- **Database** — Supabase (proposals, snapshots, voter registry)
+- **Contract** — `StakeVotingGovernance.sol` — stake-weighted, single-vote, quorum-enforced
 
----
+## How it works
 
-## Architectural Logic and Implementation
+### Proposal lifecycle (admin panel)
 
-### 1. The Core Objective
-The primary goal was to create a voting platform where influence is proportional to stake. In traditional web2 systems, voting can be susceptible to manipulation. By moving the voting process to the blockchain, we ensure that every vote is immutable and transparent. In this system, if a stakeholder holds 5,000 tokens, their vote carries a weight of 5,000.
+```
+Draft → Snapshot Taken → Contract Deployed → Voting Active → Results Final
+```
 
-### 2. Smart Contract Design
-The core logic resides in a custom Solidity contract, `StakeVotingGovernance.sol`. 
+1. **Create** — admin enters title, description, quorum threshold (basis points)
+2. **Snapshot** — locks stakeholder balances at a point in time; no stake changes after this affect the vote
+3. **Deploy** — contract is deployed to Polygon Amoy with the snapshotted voter list and stake weights
+4. **Vote** — shareholders connect MetaMask and cast a stake-weighted yes/no vote; each address can vote once
+5. **End** — admin closes voting; results are permanently on-chain
 
-Key design considerations included:
-- **State Machine Implementation:** A proposal requires distinct lifecycle phases (`Created`, `Voting`, `Ended`) to enforce strict temporal bounds on voting activity.
-- **Vote Integrity:** To prevent double-voting, the contract utilizes a mapping (`mapping(address => bool) public hasVoted`) ensuring that once a vote is cast, the stakeholder's decision is permanently locked.
-- **Access Control:** Critical state transitions, such as assigning stake and advancing proposal phases, are restricted via a `chairperson` modifier to maintain administrative security.
+### Voter flow
 
-### 3. Technology Stack
-The application was built using a modern, scalable stack intended for eventual production deployment:
-* **Frontend:** Next.js (React) combined with TailwindCSS for the user interface.
-* **Backend:** Next.js Server Actions interacting with a Neon Serverless PostgreSQL database. 
-* **Blockchain Infrastructure:** Polygon Amoy Testnet, chosen for its efficiency during the testing phase.
-* **Web3 Integration:** `ethers.js` facilitates communication between the frontend client, MetaMask, and the deployed smart contracts.
+1. Shareholder visits the voter page
+2. Connects MetaMask (Polygon Amoy network)
+3. Sees their voting power (from the snapshot)
+4. Casts vote — transaction is submitted on-chain, stamped "RECORDED"
+5. Results update in real-time from contract state
 
-### 4. Admin Panel Integration
-Initially, contract deployment and snapshot execution were handled via isolated Node.js CLI scripts. This approach proved difficult to manage and scale.
+## Vendor integration: mapping off-chain accounts to on-chain wallets
 
-The solution was to integrate an Admin Panel directly into the Next.js application. By porting the CLI scripts into Next.js Server Actions, the application now features a secure `/admin` route. When executing a deployment, the server securely accesses the administrative private key (isolated within `.env.local` to prevent client-side exposure) to compile and deploy the contract to the Polygon Amoy network. The newly generated contract address is then automatically recorded in the PostgreSQL database.
+A real deployment (e.g. a fund administrator running a shareholder vote) would bridge their cap table to the chain as follows:
 
-The public-facing frontend then queries the database to identify the most recent active proposal and dynamically binds the user interface to that specific smart contract, creating a seamless synchronization between off-chain data and on-chain state.
+**1. Announce a registration deadline**
 
----
+Before the snapshot, shareholders are notified to register their wallet address by a cutoff date.
 
-## Local Setup and Installation
+**2. Wallet self-registration (signature-based, free)**
 
-To run this project locally, follow the steps below:
+Each shareholder visits a registration portal, connects their MetaMask, and signs an off-chain message. The signature proves control of that address without spending gas. The vendor's back-office system records the `(investorId → address)` mapping.
 
-### 1. Clone and Install Dependencies
+**3. Off-chain verification**
+
+The vendor cross-references each registered address against their cap table — name, share count, KYC status. This step lives entirely off-chain.
+
+**4. Snapshot**
+
+The admin triggers the snapshot. Your verified `(address → stakeBalance)` map is sealed. Latecomers are excluded.
+
+**5. Contract deploy with voter list**
+
+The constructor receives `address[] voters, uint256[] stakes` — the exact list from the verified snapshot. From here, the vote is fully trustless.
+
+**Custodied shareholders** (held through brokers or DTCC) can't self-register. Vendors like Broadridge solve this by running a single custodian wallet that votes aggregated shares on behalf of those holders — a deliberate centralization tradeoff that mirrors how paper proxy voting already works.
+
+## Local setup
+
 ```bash
-git clone <repository-url>
-cd stake-vote
-npm install
+pnpm install
+cp .env.example .env.local   # fill in SUPABASE_URL, SUPABASE_ANON_KEY, PRIVATE_KEY
+pnpm dev
 ```
 
-### 2. Environment Configuration
-Create a `.env.local` file in the root directory. You will need a Neon Postgres database connection, an Alchemy RPC URL for the Polygon Amoy network, and a test wallet private key.
+Admin panel: `http://localhost:3000/admin`
+Voter page: `http://localhost:3000`
 
-```env
-DATABASE_URL="postgresql://<user>:<password>@<your-neon-host>/neondb?sslmode=require"
-RPC_URL="https://polygon-amoy.g.alchemy.com/v2/<your-alchemy-key>"
-ADMIN_PRIVATE_KEY="0xYourPrivateKeyHere"
-NEXT_PUBLIC_CHAIN_ID=80002
-ADMIN_PASSWORD="your-secure-password"
-```
+## Environment variables
 
-### 3. Start the Development Server
-```bash
-npm run dev
-```
-- Navigate to `http://localhost:3000` to view the voter interface.
-- Navigate to `http://localhost:3000/admin` to access the Admin Panel (Authenticate using the username `admin` and the password defined in your environment variables).
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `DEPLOYER_PRIVATE_KEY` | Private key used to deploy contracts (server-side only) |
+| `RPC_URL` | Polygon Amoy RPC endpoint |
 
----
+## Demo mode
 
-## Future Enhancements & To-Dos
-
-While the core end-to-end pipeline is functional, there are several upgrades planned for full production readiness:
-
-- [ ] **Partial Voting Power:** Upgrade the `StakeVotingGovernance.sol` contract to allow users to specify the exact amount of stake they wish to cast, rather than defaulting to 100% of their balance. (Requires local Foundry environment for compilation).
-- [ ] **Automated Cron Snapshots:** Transition the manual "Run Snapshot" button in the Admin Panel into a scheduled cron job (e.g., using Vercel Cron) to strictly enforce off-chain stake cutoffs at predetermined timestamps.
-- [ ] **Decentralized Storage:** Migrate proposal descriptions from the centralized PostgreSQL database to IPFS to ensure true end-to-end immutability.
-- [ ] **Mainnet Migration:** Transition the infrastructure from the Polygon Amoy Testnet to Polygon Mainnet for live, real-value governance.
-
----
-
-## Deployment to Vercel
-
-1. Push code to GitHub.
-2. Import repository into Vercel.
-3. Add all variables from `.env.local` to Vercel Environment Variables.
-4. Deploy.
+If no contract is deployed yet, the app falls back to demo mode — simulated votes, no wallet required. Useful for previewing the UI before any chain setup.
