@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import ProposalStatusBadge from '@/components/proposal-status-badge'
 
 interface ProposalSectionProps {
   title?: string
@@ -6,57 +6,96 @@ interface ProposalSectionProps {
   quorumBps?: number
   status?: string
   createdAt?: string
+  proposalRef?: string
+  loading?: boolean
 }
 
-export default function ProposalSection({ 
-  title = '', 
-  description = '', 
-  quorumBps = 0, 
-  status = '', 
-  createdAt = ''
+export default function ProposalSection({
+  title,
+  description,
+  quorumBps = 0,
+  status = '',
+  createdAt = '',
+  proposalRef = 'PROP-001',
+  loading = false,
 }: ProposalSectionProps) {
-  
-  const displayTitle = title || 'Loading Proposal...'
-  const displayDescription = description || 'Please wait...'
-  const quorumPercentage = quorumBps ? (quorumBps / 100).toFixed(0) + '%' : 'N/A'
-  
-  // Format the deadline as 7 days after creation (just an example calculation)
-  const deadline = createdAt 
-    ? new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  const quorumPct = quorumBps ? (quorumBps / 100).toFixed(0) + '%' : 'N/A'
+
+  const deadline = createdAt
+    ? new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      })
     : 'TBD'
-    
-  // Format status cleanly
-  const displayStatus = status === 'voting' ? 'Voting Live' : 
-                        status === 'ended' ? 'Voting Closed' : 
-                        status === 'deployed' ? 'Awaiting Start' :
-                        status ? status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="skeleton h-10 w-3/4" style={{ borderRadius: 'var(--radius-sm)' }} />
+        <div className="skeleton h-4 w-full" style={{ borderRadius: 'var(--radius-sm)' }} />
+        <div className="skeleton h-4 w-5/6" style={{ borderRadius: 'var(--radius-sm)' }} />
+        <div className="skeleton h-4 w-2/3" style={{ borderRadius: 'var(--radius-sm)' }} />
+      </div>
+    )
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl">
-          {displayTitle}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-          {displayDescription}
-        </p>
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
-          <div>
-            <p className="text-sm text-muted-foreground">Voting Deadline</p>
-            <p className="font-semibold text-foreground">{deadline}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Quorum Required</p>
-            <p className="font-semibold text-foreground">{quorumPercentage}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Status</p>
-            <p className="font-semibold text-accent">{displayStatus}</p>
-          </div>
+    <div>
+      {/* Record line */}
+      <div
+        className="flex items-center justify-between mb-4"
+        style={{ borderBottom: '1px solid var(--border-default)', paddingBottom: '12px' }}
+      >
+        <span
+          className="text-xs"
+          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}
+        >
+          RECORD NO: {proposalRef}
+        </span>
+        <ProposalStatusBadge status={status} />
+      </div>
+
+      {/* Title */}
+      <h1
+        className="mb-4"
+        style={{
+          fontFamily: 'var(--font-garamond, "EB Garamond", Georgia, serif)',
+          fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
+          fontWeight: 400,
+          lineHeight: 1.1,
+          color: 'var(--text-primary)',
+        }}
+      >
+        {title || 'Loading Proposal...'}
+      </h1>
+
+      {/* Description */}
+      <div
+        className="mb-6"
+        style={{
+          color: 'var(--text-secondary)',
+          fontSize: '0.9375rem',
+          lineHeight: 1.75,
+          whiteSpace: 'pre-wrap',
+          maxWidth: '600px',
+        }}
+      >
+        {description || 'Please wait...'}
+      </div>
+
+      {/* Meta row */}
+      <div
+        className="flex flex-wrap gap-6 pt-4 text-sm"
+        style={{ borderTop: '1px solid var(--border-subtle)' }}
+      >
+        <div>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Deadline</span>
+          <p className="font-medium mt-0.5" style={{ color: 'var(--text-primary)', fontSize: '0.875rem' }}>{deadline}</p>
         </div>
-      </CardContent>
-    </Card>
+        <div>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Quorum Required</span>
+          <p className="font-medium mt-0.5" style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'var(--font-mono)' }}>{quorumPct}</p>
+        </div>
+      </div>
+    </div>
   )
 }

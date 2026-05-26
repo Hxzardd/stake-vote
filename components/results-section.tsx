@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import VoteResultsBar from '@/components/vote-results-bar'
 
 interface ResultsSectionProps {
   yesVotes: number
@@ -6,6 +6,9 @@ interface ResultsSectionProps {
   yesPercentage: number
   noPercentage: number
   participation: number
+  quorumBps?: number
+  totalVotingPower?: number
+  loading?: boolean
 }
 
 export default function ResultsSection({
@@ -14,60 +17,36 @@ export default function ResultsSection({
   yesPercentage,
   noPercentage,
   participation,
+  quorumBps = 0,
+  totalVotingPower = 0,
+  loading = false,
 }: ResultsSectionProps) {
-  const totalVotes = yesVotes + noVotes
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Live Results</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-foreground">Yes Votes</span>
-            <span className="text-sm font-semibold text-primary">
-              {yesVotes.toLocaleString()} tokens ({yesPercentage.toFixed(1)}%)
-            </span>
-          </div>
-          <div className="w-full h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent transition-all duration-300"
-              style={{ width: `${yesPercentage}%` }}
-            />
-          </div>
-        </div>
+    <section>
+      <h2
+        className="text-xs font-semibold tracking-widest uppercase mb-4"
+        style={{ color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+      >
+        Live Results
+      </h2>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-foreground">No Votes</span>
-            <span className="text-sm font-semibold text-primary">
-              {noVotes.toLocaleString()} tokens ({noPercentage.toFixed(1)}%)
-            </span>
-          </div>
-          <div className="w-full h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${noPercentage}%` }}
-            />
-          </div>
+      {loading ? (
+        <div className="space-y-4">
+          <div className="skeleton h-2 w-full" />
+          <div className="skeleton h-2 w-full" />
+          <div className="skeleton h-10 w-full mt-4" />
         </div>
-
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-          <div>
-            <p className="text-xs text-muted-foreground">Total Votes Cast</p>
-            <p className="text-xl font-bold text-foreground">
-              {totalVotes.toLocaleString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Participation</p>
-            <p className="text-xl font-bold text-accent">
-              {participation.toFixed(1)}%
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      ) : (
+        <VoteResultsBar
+          yesVotes={yesVotes}
+          noVotes={noVotes}
+          yesPercentage={yesPercentage}
+          noPercentage={noPercentage}
+          participation={participation}
+          quorumBps={quorumBps}
+          totalVotingPower={totalVotingPower}
+        />
+      )}
+    </section>
   )
 }

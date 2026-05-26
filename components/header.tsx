@@ -1,56 +1,75 @@
-'use client';
+'use client'
 
-import { Button } from '@/components/ui/button'
+import WalletButton from '@/components/wallet-button'
 
 interface HeaderProps {
   isConnected: boolean
-  walletAddress: string | null
+  isConnecting?: boolean
+  address: string | null
+  wrongNetwork: boolean
   onConnect: () => void
   onDisconnect: () => void
+  onSwitchNetwork?: () => void
 }
 
 export default function Header({
   isConnected,
-  walletAddress,
+  isConnecting,
+  address,
+  wrongNetwork,
   onConnect,
   onDisconnect,
+  onSwitchNetwork,
 }: HeaderProps) {
   return (
-    <header className="border-b border-border bg-card">
-      <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">StakeVote</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Transparent, stake-weighted corporate voting
-          </p>
+    <header
+      className="fixed top-0 left-0 right-0 z-50"
+      style={{
+        height: '56px',
+        background: 'var(--bg-surface)',
+        borderBottom: '1px solid var(--border-subtle)',
+      }}
+    >
+      <div
+        className="h-full mx-auto px-6 flex items-center justify-between"
+        style={{ maxWidth: '1100px' }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <rect width="28" height="28" rx="2" fill="var(--brand-primary)" />
+            <rect x="6" y="7" width="10" height="1.5" fill="white" opacity="0.9" />
+            <rect x="6" y="11" width="16" height="1.5" fill="white" opacity="0.9" />
+            <rect x="6" y="15" width="13" height="1.5" fill="white" opacity="0.9" />
+            <rect x="6" y="19" width="8" height="1.5" fill="white" opacity="0.5" />
+            <rect x="19" y="15" width="3" height="7" fill="var(--brand-secondary)" rx="1" />
+          </svg>
+          <div>
+            <span
+              className="font-semibold tracking-tight"
+              style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: 1 }}
+            >
+              StakeVote
+            </span>
+            <span
+              className="hidden sm:block text-xs"
+              style={{ color: 'var(--text-muted)', lineHeight: 1, marginTop: '2px' }}
+            >
+              On-Chain Corporate Governance
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {isConnected ? (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-medium text-foreground">
-                  {walletAddress}
-                </p>
-                <p className="text-xs text-muted-foreground">Connected</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onDisconnect}
-              >
-                Disconnect
-              </Button>
-            </div>
-          ) : (
-            <Button
-              onClick={onConnect}
-              size="sm"
-            >
-              Connect Wallet
-            </Button>
-          )}
-        </div>
+        {/* Wallet */}
+        <WalletButton
+          isConnected={isConnected}
+          isConnecting={isConnecting}
+          address={address}
+          wrongNetwork={wrongNetwork}
+          onConnect={onConnect}
+          onDisconnect={onDisconnect}
+          onSwitchNetwork={onSwitchNetwork}
+        />
       </div>
     </header>
   )
