@@ -10,6 +10,7 @@ export default defineConfig([
     'lib/forge-std/**',
     'cache/**',
     'broadcast/**',
+    'backend/**',
     'next-env.d.ts',
   ]),
   ...nextCoreWebVitals,
