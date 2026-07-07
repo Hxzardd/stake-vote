@@ -1,31 +1,41 @@
 import { NextResponse } from 'next/server'
-import { Pool } from 'pg'
+import { getActiveProposal, type ProposalRow } from '@/lib/db/proposals'
 
-let _pool: Pool | null = null
-function getPool() {
-  if (!_pool) {
-    _pool = new Pool({ connectionString: process.env.DATABASE_URL })
-  }
-  return _pool
+export type DisplayState = 'voting' | 'deployed' | 'ended' | 'preparing'
+
+export interface ActiveProposalResponse extends ProposalRow {
+  displayState: DisplayState
 }
 
+function toDisplayState(status: ProposalRow['status']): DisplayState {
+  switch (status) {
+    case 'voting':
+      return 'voting'
+    case 'deployed':
+      return 'deployed'
+    case 'ended':
+      return 'ended'
+    default:
+      return 'preparing'
+  }
+}
+
+/**
+ * The proposal the voter page should show. Priority: live (voting/deployed),
+ * else the most recent certified result, else whatever is in preparation.
+ * 404 only when the database has no proposals at all (→ sandbox mode).
+ */
 export async function GET() {
   try {
-    const pool = getPool()
-    // Fetch the most recently created proposal that has a deployed contract
-    const res = await pool.query(`
-      SELECT id, title, description, contract_address, status, quorum_bps, created_at
-      FROM proposals 
-      WHERE contract_address IS NOT NULL 
-      ORDER BY created_at DESC 
-      LIMIT 1
-    `)
-
-    if (res.rows.length === 0) {
-      return NextResponse.json({ error: 'No active proposal found' }, { status: 404 })
+    const proposal = await getActiveProposal()
+    if (!proposal) {
+      return NextResponse.json({ error: 'No proposal found' }, { status: 404 })
     }
-
-    return NextResponse.json(res.rows[0])
+    const body: ActiveProposalResponse = {
+      ...proposal,
+      displayState: toDisplayState(proposal.status),
+    }
+    return NextResponse.json(body)
   } catch (error) {
     console.error('Error fetching active proposal:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

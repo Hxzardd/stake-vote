@@ -30,7 +30,8 @@ next-env.d.ts
 
 # Foundry (contracts + tests)
 /cache/
-/lib/
+/out/
+/lib/forge-std/
 /broadcast/
 /.foundry/
 *.zip
